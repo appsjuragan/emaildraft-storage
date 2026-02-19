@@ -1,0 +1,59 @@
+[package]
+name = "objectmail"
+version = "0.1.0"
+edition = "2021"
+description = "S3-compatible object storage API using email drafts as backend"
+
+[dependencies]
+# Web framework
+axum = { version = "0.7", features = ["macros"] }
+tokio = { version = "1", features = ["full"] }
+tower = "0.4"
+tower-http = { version = "0.5", features = ["trace", "cors"] }
+hyper = { version = "1", features = ["full"] }
+bytes = "1"
+
+# Database ORM
+sea-orm = { version = "1", features = ["sqlx-postgres", "runtime-tokio-native-tls", "macros", "with-uuid", "with-chrono", "with-json"] }
+sea-orm-migration = { version = "1", features = ["sqlx-postgres", "runtime-tokio-native-tls"] }
+
+# IMAP email client
+async-imap = "0.10"
+async-native-tls = "0.5"
+
+# MIME message building and parsing
+mail-builder = "0.3"
+mailparse = "0.15"
+
+# XML for S3 responses
+quick-xml = { version = "0.36", features = ["serialize"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Hashing & crypto
+sha2 = "0.10"
+md-5 = "0.10"
+hmac = "0.12"
+hex = "0.4"
+digest = "0.10"
+
+# Encoding
+base64 = "0.22"
+
+# Utilities
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+dotenvy = "0.15"
+toml = "0.8"
+anyhow = "1"
+thiserror = "1"
+async-trait = "0.1"
+percent-encoding = "2"
+url = "2"
+tempfile = "3"
+futures = "0.3"
+tokio-util = { version = "0.7", features = ["io", "compat"] }

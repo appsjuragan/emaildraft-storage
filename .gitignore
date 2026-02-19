@@ -1,0 +1,15 @@
+# Generated files
+/target/
+/tmp/
+
+# Environment
+.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+*.log
+node_modules/

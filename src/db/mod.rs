@@ -1,0 +1,9 @@
+pub mod entities;
+
+use sea_orm::{Database, DatabaseConnection};
+
+pub async fn connect(database_url: &str) -> anyhow::Result<DatabaseConnection> {
+    let db = Database::connect(database_url).await?;
+    tracing::info!("Connected to database");
+    Ok(db)
+}

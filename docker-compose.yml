@@ -1,0 +1,27 @@
+version: "3.8"
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: objectmail
+      POSTGRES_PASSWORD: objectmail
+      POSTGRES_DB: objectmail
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  imap:
+    image: greenmail/standalone:latest
+    environment:
+      GREENMAIL_OPTS: "-Dgreenmail.setup.test.all -Dgreenmail.hostname=0.0.0.0 -Dgreenmail.auth.disabled -Dgreenmail.users=test:password"
+    ports:
+      - "3143:3143" # IMAP
+      - "3993:3993" # IMAPS
+      - "3025:3025" # SMTP
+      - "3465:3465" # SMTPS
+    restart: unless-stopped
+
+volumes:
+  pgdata:
