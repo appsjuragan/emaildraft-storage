@@ -4,4 +4,5 @@ pub mod error;
 pub mod multipart;
 pub mod object;
 pub mod router;
+pub mod sts;
 pub mod xml;

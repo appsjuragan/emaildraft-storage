@@ -8,7 +8,7 @@ use axum::{
 };
 use std::sync::Arc;
 
-use crate::s3::{auth, bucket, multipart, object};
+use crate::s3::{auth, bucket, multipart, object, sts};
 use crate::AppState;
 
 /// Simple request logger middleware
@@ -23,7 +23,16 @@ async fn log_middleware(req: Request, next: Next) -> Response {
 
 /// Build the S3-compatible API router
 pub fn build_router(state: AppState) -> Router {
-    Router::new()
+    // STS endpoint (POST /) does NOT go through the SigV4 auth middleware
+    // because the console uses STS *to obtain* credentials.
+    let sts_router = Router::new()
+        .route("/", post(sts::assume_role))
+        .layer(middleware::from_fn(log_middleware))
+        .layer(axum::extract::DefaultBodyLimit::max(1024 * 1024))
+        .with_state(state.clone());
+
+    // All other S3 routes go through SigV4 auth
+    let s3_router = Router::new()
         // Service-level operations
         .route("/", get(bucket::list_buckets))
         // Bucket-level operations
@@ -47,7 +56,12 @@ pub fn build_router(state: AppState) -> Router {
         .layer(axum::Extension(Arc::new(state.config.s3.clone())))
         // Apply logger middleware
         .layer(middleware::from_fn(log_middleware))
-        .with_state(state)
+        // Increase body limit to 5GB
+        .layer(axum::extract::DefaultBodyLimit::max(5 * 1024 * 1024 * 1024))
+        .with_state(state);
+
+    // Merge routers — STS routes take priority for POST /
+    sts_router.merge(s3_router)
 }
 
 /// GET /{bucket} — dispatches to ListObjectsV2 or other bucket-level GET

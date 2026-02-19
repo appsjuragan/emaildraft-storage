@@ -19,47 +19,13 @@ struct AuthInfo {
     access_key_id: String,
     date: String,
     region: String,
+    service: String,
     signed_headers: Vec<String>,
     signature: String,
 }
 
-fn parse_authorization(header: &str) -> Option<AuthInfo> {
-    // Format: AWS4-HMAC-SHA256 Credential=<key>/<date>/<region>/s3/aws4_request,
-    //         SignedHeaders=<headers>, Signature=<sig>
-    let header = header.strip_prefix("AWS4-HMAC-SHA256 ")?;
-
-    let mut credential = None;
-    let mut signed_headers = None;
-    let mut signature = None;
-
-    for part in header.split(", ") {
-        let part = part.trim();
-        if let Some(val) = part.strip_prefix("Credential=") {
-            credential = Some(val.to_string());
-        } else if let Some(val) = part.strip_prefix("SignedHeaders=") {
-            signed_headers = Some(val.to_string());
-        } else if let Some(val) = part.strip_prefix("Signature=") {
-            signature = Some(val.to_string());
-        }
-    }
-
-    let credential = credential?;
-    let parts: Vec<&str> = credential.splitn(5, '/').collect();
-    if parts.len() < 5 {
-        return None;
-    }
-
-    Some(AuthInfo {
-        access_key_id: parts[0].to_string(),
-        date: parts[1].to_string(),
-        region: parts[2].to_string(),
-        signed_headers: signed_headers?.split(';').map(|s| s.to_string()).collect(),
-        signature: signature?,
-    })
-}
-
 /// Derive AWS SigV4 signing key
-fn derive_signing_key(secret: &str, date: &str, region: &str) -> Vec<u8> {
+fn derive_signing_key(secret: &str, date: &str, region: &str, service: &str) -> Vec<u8> {
     let k_secret = format!("AWS4{}", secret);
 
     let mut mac = HmacSha256::new_from_slice(k_secret.as_bytes()).unwrap();
@@ -71,7 +37,7 @@ fn derive_signing_key(secret: &str, date: &str, region: &str) -> Vec<u8> {
     let k_region = mac.finalize().into_bytes();
 
     let mut mac = HmacSha256::new_from_slice(&k_region).unwrap();
-    mac.update(b"s3");
+    mac.update(service.as_bytes());
     let k_service = mac.finalize().into_bytes();
 
     let mut mac = HmacSha256::new_from_slice(&k_service).unwrap();
@@ -223,7 +189,7 @@ pub async fn auth_middleware(request: Request, next: Next) -> Result<Response, S
     let canonical_request_hash = hex::encode(Sha256::digest(canonical_request.as_bytes()));
 
     // Build string to sign
-    let credential_scope = format!("{}/{}/s3/aws4_request", auth_info.date, auth_info.region);
+    let credential_scope = format!("{}/{}/{}/aws4_request", auth_info.date, auth_info.region, auth_info.service);
 
     let string_to_sign = format!(
         "AWS4-HMAC-SHA256\n{}\n{}\n{}",
@@ -235,14 +201,20 @@ pub async fn auth_middleware(request: Request, next: Next) -> Result<Response, S
         &config.secret_access_key,
         &auth_info.date,
         &auth_info.region,
+        &auth_info.service,
     );
 
     let computed_signature = compute_signature(&signing_key, &string_to_sign);
 
     // Compare signatures
     if computed_signature != auth_info.signature {
+        tracing::error!("Signature mismatch!");
+        tracing::debug!("Authorization Header: {}", auth_header);
+        tracing::debug!("x-amz-date: {}", amz_date);
+        tracing::debug!("Canonical Request:\n---BEGIN---\n{}\n---END---", canonical_request);
+        tracing::debug!("String to Sign:\n---BEGIN---\n{}\n---END---", string_to_sign);
         tracing::error!(
-            "Signature mismatch! Computed: {}, Provided: {}",
+            "Computed Signature: {}, Provided Signature: {}",
             computed_signature,
             auth_info.signature
         );
@@ -253,4 +225,41 @@ pub async fn auth_middleware(request: Request, next: Next) -> Result<Response, S
     }
 
     Ok(next.run(request).await)
+}
+
+fn parse_authorization(header: &str) -> Option<AuthInfo> {
+    // Format: AWS4-HMAC-SHA256 Credential=<key>/<date>/<region>/<service>/aws4_request,
+    //         SignedHeaders=<headers>, Signature=<sig>
+    let header = header.strip_prefix("AWS4-HMAC-SHA256 ")?;
+
+    let mut credential = None;
+    let mut signed_headers = None;
+    let mut signature = None;
+
+    // Split by comma and trim to handle both ", " and ","
+    for part in header.split(',') {
+        let part = part.trim();
+        if let Some(val) = part.strip_prefix("Credential=") {
+            credential = Some(val.to_string());
+        } else if let Some(val) = part.strip_prefix("SignedHeaders=") {
+            signed_headers = Some(val.to_string());
+        } else if let Some(val) = part.strip_prefix("Signature=") {
+            signature = Some(val.to_string());
+        }
+    }
+
+    let credential = credential?;
+    let parts: Vec<&str> = credential.splitn(5, '/').collect();
+    if parts.len() < 5 {
+        return None;
+    }
+
+    Some(AuthInfo {
+        access_key_id: parts[0].to_string(),
+        date: parts[1].to_string(),
+        region: parts[2].to_string(),
+        service: parts[3].to_string(),
+        signed_headers: signed_headers?.split(';').map(|s| s.to_string()).collect(),
+        signature: signature?,
+    })
 }
