@@ -12,30 +12,6 @@ services:
       - pgdata:/var/lib/postgresql/data
     restart: unless-stopped
 
-  imap:
-    image: greenmail/standalone:latest
-    environment:
-      GREENMAIL_OPTS: "-Dgreenmail.setup.test.all -Dgreenmail.hostname=0.0.0.0 -Dgreenmail.auth.disabled -Dgreenmail.users=test:password"
-    ports:
-      - "3143:3143" # IMAP
-      - "3993:3993" # IMAPS
-      - "3025:3025" # SMTP
-      - "3465:3465" # SMTPS
-    restart: unless-stopped
-
-  roundcube:
-    image: roundcube/roundcubemail:latest
-    ports:
-      - "8081:80"
-    environment:
-      - ROUNDCUBEMAIL_DEFAULT_HOST=imap
-      - ROUNDCUBEMAIL_SMTP_SERVER=imap
-      - ROUNDCUBEMAIL_DEFAULT_PORT=3143
-      - ROUNDCUBEMAIL_SMTP_PORT=3025
-    depends_on:
-      - imap
-    restart: unless-stopped
-
   s3manager:
     image: cloudlena/s3manager:latest
     ports:

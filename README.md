@@ -120,12 +120,9 @@ aws --endpoint-url http://localhost:3000 s3 cp s3://my-backup-bucket/large-video
 
 ## 🐳 Docker Compose Integration
 
-The project includes a `docker-compose.yml` file to spin up a full local development environment with:
+The project includes a `docker-compose.yml` file to spin up a local development environment with:
 - **PostgreSQL**: For metadata storage.
-- **GreenMail**: A mock IMAP/SMTP server for email storage backend.
-- **ObjectMail**: The main S3-compatible API server.
 - **S3 Manager**: A web-based S3 browser GUI.
-- **Roundcube**: A web-based email client GUI.
 
 ### Quick Start with Docker
 
@@ -134,21 +131,15 @@ The project includes a `docker-compose.yml` file to spin up a full local develop
    docker-compose up -d
    ```
 
-2. **Access the GUIs**:
+2. **Access the S3 GUI**:
    - **S3 Manager (Storage Browser)**: [http://localhost:8080](http://localhost:8080)
      - *No login required (auto-configured)*
-   - **Roundcube (Email Backend)**: [http://localhost:8081](http://localhost:8081)
-     - Username: `test`
-     - Password: `password`
 
-3. **Run the API Server (Local Development)**:
-   Ensure your `.env` points to the Docker services:
+3. **Run the API Server**:
+   Ensure your `.env` is configured for your **real email provider** (GreenMail is no longer included).
    ```env
    DATABASE_URL=postgres://objectmail:objectmail@localhost:5432/objectmail
-   EMAIL_HOST=localhost
-   EMAIL_PORT=3143
-   EMAIL_USER=test
-   EMAIL_PASSWORD=password
+   # ... plus your real EMAIL_ configuration
    ```
    Then run: `cargo run`
 
