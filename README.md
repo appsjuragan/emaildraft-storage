@@ -13,27 +13,27 @@ ObjectMail is a high-performance, S3-compatible API server written in Rust that 
 - **High Performance**: Built with Rust, Axum, and Tokio for asynchronous, non-blocking I/O.
 - **Metadata Management**: Uses PostgreSQL and SeaORM for robust tracking of buckets, objects, and chunk mappings.
 
-##  architektura 🏗️
+## Architecture 🏗️
 
 ```mermaid
 graph TD
-    User[User / S3 Client] -->|S3 API Request| Axum[Axum Web Server]
+    User["User / S3 Client"] -->|"S3 API Request"| Axum["Axum Web Server"]
     
     subgraph "ObjectMail Service"
-        Axum -->|Route| S3Router[S3 Router]
-        S3Router -->|Auth & Logic| Pipeline[Storage Pipeline]
+        Axum -->|"Route"| S3Router["S3 Router"]
+        S3Router -->|"Auth & Logic"| Pipeline["Storage Pipeline"]
         
-        Pipeline -->|1. Check/Update Metadata| DB[(PostgreSQL)]
-        Pipeline -->|2. Chunk & Hash Data| Chunker[Chunker Service]
+        Pipeline -->|"1. Check/Update Metadata"| DB[("(PostgreSQL)")]
+        Pipeline -->|"2. Chunk & Hash Data"| Chunker["Chunker Service"]
         
-        Chunker -->|3. Check Dedup| DB
+        Chunker -->|"3. Check Dedup"| DB
         
-        Pipeline -->|4a. IF New Chunk| IMAP[IMAP Client (Gmail)]
-        Pipeline -->|4b. IF Duplicate| DB
+        Pipeline -->|"4a. IF New Chunk"| IMAP["IMAP Client (Gmail)"]
+        Pipeline -->|"4b. IF Duplicate"| DB
         
-        IMAP -->|Upload Draft| EmailProvider[Email Provider\n(e.g., Gmail, GreenMail)]
+        IMAP -->|"Upload Draft"| EmailProvider["Email Provider (e.g., Gmail, GreenMail)"]
         
-        Pipeline -->|5. Store Chunk Map| DB
+        Pipeline -->|"5. Store Chunk Map"| DB
     end
 
     style Axum fill:#f9f,stroke:#333,stroke-width:2px
